@@ -1,0 +1,96 @@
+import pandas as pd
+import os
+from datetime import datetime
+from openpyxl import load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+
+# CAMINHO DA PASTA
+pasta = "/Users/sachaclael/Library/CloudStorage/OneDrive-BibliotecasCompartilhadas-MinistériodaSaúde/Equipe CGSPD - Planilhas de Escalonamento"
+
+sheet_name = "Plano de Ação_consolidado"
+
+dfs = []
+
+# LEITURA DOS ARQUIVOS
+for arquivo in os.listdir(pasta):
+
+    if not arquivo.endswith(".xlsx") or arquivo.startswith("~$"):
+        continue
+
+    caminho_arquivo = os.path.join(pasta, arquivo)
+    print(f"Lendo: {arquivo}")
+
+    try:
+        df = pd.read_excel(
+            caminho_arquivo,
+            sheet_name=sheet_name,
+            header=2,
+            engine="openpyxl"
+        )
+
+        df = df.dropna(how='all')
+        df = df.dropna(axis=1, how='all')
+        df.columns = df.columns.str.strip()
+
+        df["ARQUIVO_ORIGEM"] = arquivo.replace(".xlsx", "")
+
+        if not df.empty:
+            dfs.append(df)
+
+    except Exception as e:
+        print(f"Erro ao processar {arquivo}: {e}")
+
+# VALIDAÇÃO
+if not dfs:
+    raise Exception("Nenhum dado foi carregado.")
+
+# CONSOLIDAÇÃO
+df_final = pd.concat(dfs, ignore_index=True)
+df_final = df_final.drop_duplicates()
+df_final = df_final.reset_index(drop=True)
+
+# NOME DO ARQUIVO
+data_hoje = datetime.now().strftime("%Y - %m - %d")
+nome_arquivo = f"{data_hoje} - Atualizado.xlsx"
+
+caminho_saida = os.path.join(pasta, nome_arquivo)
+
+# SALVAR
+df_final.to_excel(caminho_saida, index=False)
+
+# FORMATAÇÃO EXCEL
+wb = load_workbook(caminho_saida)
+ws = wb.active
+
+# Filtro automático
+ws.auto_filter.ref = ws.dimensions
+
+# Cabeçalho (linha 1)
+cor_fundo = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")  # azul claro
+fonte = Font(color="000000", bold=True)  # preto + negrito
+
+for cell in ws[1]:
+    cell.fill = cor_fundo
+    cell.font = fonte
+    cell.alignment = Alignment(horizontal="center", vertical="center")
+
+# Ajuste automático da largura das colunas
+for col in ws.columns:
+    max_length = 0
+    col_letter = col[0].column_letter
+
+    for cell in col:
+        try:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        except:
+            pass
+
+    largura_ajustada = max_length + 2
+    ws.column_dimensions[col_letter].width = largura_ajustada
+
+# SALVAR ALTERAÇÕES
+wb.save(caminho_saida)
+
+print("\n✅ CONSOLIDAÇÃO FINALIZADA COM FORMATAÇÃO:")
+print(caminho_saida)
