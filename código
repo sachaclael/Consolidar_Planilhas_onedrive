@@ -70,6 +70,23 @@ nome_arquivo = f"{data_hoje} - Atualizado.xlsx"
 
 caminho_saida = os.path.join(pasta, nome_arquivo)
 
+# EXCLUIR PLANILHA ANTIGA
+for arquivo in os.listdir(pasta):
+    if arquivo.endswith(" - Atualizado.xlsx") and arquivo != nome_arquivo:
+        caminho_antigo = os.path.join(pasta, arquivo)
+        try:
+            os.remove(caminho_antigo)
+            print(f"Planilha antiga removida: {arquivo}")
+        except Exception as e:
+            print(f"Não foi possível remover {arquivo}: {e}")
+
+# Se já existir o arquivo do dia, remove antes de criar o novo
+if os.path.exists(caminho_saida):
+    try:
+        os.remove(caminho_saida)
+        print(f"Arquivo anterior do dia removido: {nome_arquivo}")
+    except Exception as e:
+        print(f"Não foi possível remover o arquivo atual existente: {e}")
 
 # Nova ABA: RESUMO ANALÍTICO
 
